@@ -22,10 +22,9 @@ using namespace Glib;
 
 const DB_playItem_t *last;
 
-//static const ustring LW_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
-//static const ustring LW_FMT = "https://lyrics.rys.pw/?artist=%1&title=%2";
 // Can't use HTTPS cause libxml++ is broken
-static const ustring LW_FMT = "http://lyrics.rys.pw/?artist=%1&title=%2";
+static const ustring OpenLyricsDatabase_FMT = "http://lyrics.rys.pw/?artist=%1&title=%2";
+static const ustring LyricsWiki_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
 static const char *home_cache = getenv("XDG_CACHE_HOME");
 static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache")
                                + "/deadbeef/lyrics/";
@@ -142,18 +141,15 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 		title  = deadbeef->pl_find_meta(track, "title");
 	}
 
-	ustring api_url = ustring::compose(LW_FMT, uri_escape_string(artist, {}, false)
-	                                         , uri_escape_string(title, {}, false));
+	ustring openlyrics_api_url = ustring::compose(OpenLyricsDatabase_FMT, uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
+	ustring lyricswiki_api_url = ustring::compose(LyricsWiki_FMT,         uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
 
-	cout << "api_url: " << api_url << endl;
+	cout << "api_url: " << openlyrics_api_url << endl;
 	string url;
 	ustring lyrics;
 	bool lyricsfound = 0;
 	try {
-		xmlpp::TextReader reader{api_url};
-//		xmlpp::TextReader reader{"https://lyrics.rys.pw/?title=six%20shooter"};
-//https://lyrics.duckbutt.webcam/?title=six shooter
-//		xmlpp::TextReader reader{"https://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet"};
+		xmlpp::TextReader reader{openlyrics_api_url};
 		while (reader.read()) {
 //			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
 //			cout << "reader.get_name():" << reader.get_name() << endl;
@@ -170,52 +166,76 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 			}
 		}
 	} catch (const exception &e) {
-		cerr << "lyricbar: couldn't parse XML (URI is '" << api_url << "'), what(): " << e.what() << endl;
+		cerr << "lyricbar: couldn't parse XML (URI is '" << openlyrics_api_url << "'), what(): " << e.what() << endl;
 		return {};
 	}
-		if (lyricsfound == 0) {
+	if (lyricsfound == 0) {
+		url = "";
+		try {
+				xmlpp::TextReader reader{lyricswiki_api_url};
+
+				while (reader.read()) {
+					if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
+						reader.read();
+						// got the cropped version of lyrics — display it before the complete one is got
+						if (reader.get_value() == "Not found")
+							return {};
+						else
+							set_lyrics(track, reader.get_value());
+					} else if (reader.get_name() == "url") {
+						reader.read();
+						url = reader.get_value();
+						break;
+					}
+				}
+			} catch (const exception &e) {
+				cerr << "lyricbar: couldn't parse XML (URI is '" << lyricswiki_api_url << "'), what(): " << e.what() << endl;
+				return {};
+		}
+
+		// Mark as not on OpenLyricsDB
+		// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
+		// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
+		// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
+		cout << "api_url (1/3): " << lyricswiki_api_url << endl;
+		cout << "api_url (2/3): " << url << endl;
+
+		url.replace(0, 24, "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
+		// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
+		cout << "api_url (3/3): " << url << endl;
+
+		ustring raw_lyrics;
+		try {
+			xmlpp::TextReader reader{url};
+			while (reader.read()) {
+				if (reader.get_name() == "rev") {
+					reader.read();
+					raw_lyrics = reader.get_value();
+					break;
+				}
+			}
+		} catch (const exception &e) {
+			cerr << "lyricbar: couldn't parse XML, what(): " << e.what() << endl;
 			return {};
 		}
 
-/*
-	// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
-	// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
-	// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
-	url.replace(0, 24, "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
-	// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
+		raw_lyrics = "<root>" + raw_lyrics + "</root>"; // a somewhat dirty hack, but that's life
 
-	ustring raw_lyrics;
-	try {
-		xmlpp::TextReader reader{url};
-		while (reader.read()) {
-			if (reader.get_name() == "rev") {
-				reader.read();
-				raw_lyrics = reader.get_value();
-				break;
+		try {
+			xmlpp::TextReader reader{reinterpret_cast<const uint8_t*>(raw_lyrics.data()), raw_lyrics.bytes()};
+			while (reader.read()) {
+				if (reader.get_name() == "lyrics") {
+					reader.read();
+					lyrics = "Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
+					lyrics += reader.get_value();
+					break;
+				}
 			}
+		} catch (const exception &e) {
+			cerr << "lyricbar: couldn't parse raw lyrics, what(): " << e.what() << endl;
+			return {};
 		}
-	} catch (const exception &e) {
-		cerr << "lyricbar: couldn't parse XML, what(): " << e.what() << endl;
-		return {};
 	}
-
-	raw_lyrics = "<root>" + raw_lyrics + "</root>";  // a somewhat dirty hack, but that's life
-
-	ustring lyrics;
-	try {
-		xmlpp::TextReader reader{reinterpret_cast<const uint8_t*>(raw_lyrics.data()), raw_lyrics.bytes()};
-		while (reader.read()) {
-			if (reader.get_name() == "lyrics") {
-				reader.read();
-				lyrics = reader.get_value();
-				break;
-			}
-		}
-	} catch (const exception &e) {
-		cerr << "lyricbar: couldn't parse raw lyrics, what(): " << e.what() << endl;
-		return {};
-	}*/
-
 	auto after_last_nonspace = find_if_not(lyrics.rbegin(), lyrics.rend(), ::isspace).base();
 	lyrics.erase(after_last_nonspace, lyrics.end());
 	auto first_nonspace = find_if_not(lyrics.begin(), lyrics.end(), ::isspace);
@@ -258,7 +278,7 @@ void update_lyrics(void *tr) {
 			}
 		}
 	}
-	set_lyrics(track, _("Lyrics not found"));
+	set_lyrics(track, _("Lyrics not found.\nPlease consider finding/creating correct lyrics and adding them to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing"));
 }
 
 /**
