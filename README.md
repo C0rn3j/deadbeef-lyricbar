@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/loskutov/deadbeef-lyricbar.svg)](https://travis-ci.org/loskutov/deadbeef-lyricbar)
 # DeaDBeeF Lyricbar Plugin
-A simple plugin for DeaDBeeF audio player that fetches and shows the song’s lyrics using LyricWiki.
+A simple plugin for DeaDBeeF audio player that fetches and shows the song’s lyrics using [Open Lyrics Database](https://github.com/Lyrics/Lyrics).
 ![Screenshot](http://rain.ifmo.ru/~loskutov/deadbeef-lyricbar.png)
 
 Inspired by [Infobar Plugin](https://bitbucket.org/dsimbiriatin/deadbeef-infobar/). If you need more functionality,

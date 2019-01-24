@@ -22,7 +22,10 @@ using namespace Glib;
 
 const DB_playItem_t *last;
 
-static const ustring LW_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
+//static const ustring LW_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
+//static const ustring LW_FMT = "https://lyrics.rys.pw/?artist=%1&title=%2";
+// Can't use HTTPS cause libxml++ is broken
+static const ustring LW_FMT = "http://lyrics.duckbutt.webcam/?artist=%1&title=%2";
 static const char *home_cache = getenv("XDG_CACHE_HOME");
 static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache")
                                + "/deadbeef/lyrics/";
@@ -142,31 +145,44 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	ustring api_url = ustring::compose(LW_FMT, uri_escape_string(artist, {}, false)
 	                                         , uri_escape_string(title, {}, false));
 
+	cout << "api_url: " << api_url << endl;
 	string url;
+	ustring lyrics;
+	bool lyricsfound = 0;
 	try {
 		xmlpp::TextReader reader{api_url};
-
+//		xmlpp::TextReader reader{"https://lyrics.rys.pw/?title=six%20shooter"};
+//https://lyrics.duckbutt.webcam/?title=six shooter
+//		xmlpp::TextReader reader{"https://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet"};
 		while (reader.read()) {
-			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element
-			        && reader.get_name() == "lyrics") {
+//			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
+//			cout << "reader.get_name():" << reader.get_name() << endl;
+			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "pre") {
 				reader.read();
+				lyrics = reader.get_value();
 				// got the cropped version of lyrics — display it before the complete one is got
-				if (reader.get_value() == "Not found")
+				if (reader.get_value() == "Not Found")
 					return {};
-				else
+				else {
 					set_lyrics(track, reader.get_value());
-			} else if (reader.get_name() == "url") {
-				reader.read();
-				url = reader.get_value();
-				break;
+					lyricsfound = 1;
+				}
 			}
 		}
 	} catch (const exception &e) {
 		cerr << "lyricbar: couldn't parse XML (URI is '" << api_url << "'), what(): " << e.what() << endl;
 		return {};
 	}
+		if (lyricsfound == 0) {
+			return {};
+		}
 
+/*
+	// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
+	// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
+	// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
 	url.replace(0, 24, "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
+	// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
 
 	ustring raw_lyrics;
 	try {
@@ -198,7 +214,8 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	} catch (const exception &e) {
 		cerr << "lyricbar: couldn't parse raw lyrics, what(): " << e.what() << endl;
 		return {};
-	}
+	}*/
+
 	auto after_last_nonspace = find_if_not(lyrics.rbegin(), lyrics.rend(), ::isspace).base();
 	lyrics.erase(after_last_nonspace, lyrics.end());
 	auto first_nonspace = find_if_not(lyrics.begin(), lyrics.end(), ::isspace);
