@@ -25,7 +25,7 @@ const DB_playItem_t *last;
 //static const ustring LW_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
 //static const ustring LW_FMT = "https://lyrics.rys.pw/?artist=%1&title=%2";
 // Can't use HTTPS cause libxml++ is broken
-static const ustring LW_FMT = "http://lyrics.duckbutt.webcam/?artist=%1&title=%2";
+static const ustring LW_FMT = "http://lyrics.rys.pw/?artist=%1&title=%2";
 static const char *home_cache = getenv("XDG_CACHE_HOME");
 static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache")
                                + "/deadbeef/lyrics/";
