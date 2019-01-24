@@ -182,7 +182,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 						if (reader.get_value() == "Not found")
 							return {};
 						else
-							set_lyrics(track, fallBackText+reader.get_value());
+							set_lyrics(track, fallBackText+"\n"+reader.get_value());
 					} else if (reader.get_name() == "url") {
 						reader.read();
 						url = reader.get_value();
