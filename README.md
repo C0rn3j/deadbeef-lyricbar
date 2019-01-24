@@ -1,8 +1,13 @@
 # DeaDBeeF Lyricbar Plugin
-A simple plugin for DeaDBeeF audio player that fetches and shows the lyrics of a song using [Open Lyrics Database](https://github.com/Lyrics/Lyrics).
+A simple plugin for DeaDBeeF audio player that fetches and shows the lyrics of a song using [Open Lyrics Database](https://github.com/Lyrics/Lyrics) (while using LyricWiki as a fallback).
 
 Inspired by [Infobar Plugin](https://bitbucket.org/dsimbiriatin/deadbeef-infobar/). If you need more functionality,
 check [Ignat Loskutov's fork of it](https://bitbucket.org/IgnatLoskutov/deadbeef-infobar-ng), containing a few bug-fixes and minor improvements, but at the moment it has a bug that makes it crash almost all the time with current version of DeaDBeeF.
+
+## Screenshots
+
+<img src="https://raw.githubusercontent.com/C0rn3j/deadbeef-lyricbar/master/screenshots/openlyricsdb.png" width="250"> <img src="https://raw.githubusercontent.com/C0rn3j/deadbeef-lyricbar/master/screenshots/fallback.png" width="250"><img src="https://raw.githubusercontent.com/C0rn3j/deadbeef-lyricbar/master/screenshots/nolyrics.png" width="250">
+
 
 ## Dependencies
 To use this plugin, you need to have [gtkmm](http://www.gtkmm.org/) and [libxml++ 3](http://libxmlplusplus.sourceforge.net/) installed.
