@@ -147,6 +147,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	cout << "api_url: " << openlyrics_api_url << endl;
 	string url;
 	ustring lyrics;
+	string fallBackText="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
 	bool lyricsfound = 0;
 	try {
 		xmlpp::TextReader reader{openlyrics_api_url};
@@ -181,7 +182,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 						if (reader.get_value() == "Not found")
 							return {};
 						else
-							set_lyrics(track, reader.get_value());
+							set_lyrics(track, fallBackText+reader.get_value());
 					} else if (reader.get_name() == "url") {
 						reader.read();
 						url = reader.get_value();
@@ -226,7 +227,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 			while (reader.read()) {
 				if (reader.get_name() == "lyrics") {
 					reader.read();
-					lyrics = "Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
+					lyrics = fallBackText;
 					lyrics += reader.get_value();
 					break;
 				}
