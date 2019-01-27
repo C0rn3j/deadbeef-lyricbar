@@ -144,7 +144,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	ustring openlyrics_api_url = ustring::compose(OpenLyricsDatabase_FMT, uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
 	ustring lyricswiki_api_url = ustring::compose(LyricsWiki_FMT,         uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
 
-	cout << "api_url: " << openlyrics_api_url << endl;
+	cout << "api_url (1/1): " << openlyrics_api_url << endl;
 	string url;
 	ustring lyrics;
 	string fallBackText="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
@@ -167,8 +167,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 			}
 		}
 	} catch (const exception &e) {
-		cerr << "lyricbar: couldn't parse XML (URI is '" << openlyrics_api_url << "'), what(): " << e.what() << endl;
-		return {};
+		cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << openlyrics_api_url << "'), what(): " << e.what() << endl;
 	}
 	if (lyricsfound == 0) {
 		url = "";
@@ -190,7 +189,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 					}
 				}
 			} catch (const exception &e) {
-				cerr << "lyricbar: couldn't parse XML (URI is '" << lyricswiki_api_url << "'), what(): " << e.what() << endl;
+				cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << lyricswiki_api_url << "'), what(): " << e.what() << endl;
 				return {};
 		}
 
