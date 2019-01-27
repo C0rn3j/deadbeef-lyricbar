@@ -1,0 +1,5 @@
+ddb_lyricbar_gtk2.so
+ddb_lyricbar_gtk3.so
+main.o
+ui.o
+utils.o

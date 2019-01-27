@@ -15,10 +15,14 @@ To use this plugin, you need to have [gtkmm](http://www.gtkmm.org/) and [libxml+
 While gtkmm is available in the repositories of most modern distributions (e.g. in Ubuntu you'll have to install `libgtkmm-3.0-dev` for the gtk3 version of lyricbar), libxml++3 is absent in many of them. If that's the case, you'll have to build it from sources (e.g. for Ubuntu: `sudo apt install checkinstall libxml2-dev && wget http://ftp.gnome.org/pub/GNOME/sources/libxml++/3.0/libxml++-3.0.1.tar.xz && tar -xJf libxml++-3.0.1.tar.xz && cd libxml++-3.0.1 && ./configure --prefix=/usr && make && sudo checkinstall`).
 
 ## Installation
+### Arch Linux
+There's an [AUR package](https://aur.archlinux.org/packages/deadbeef-plugin-lyricbar-git) maintained by dpirate
+
+### Manual
 ```sh
 git clone https://github.com/C0rn3j/deadbeef-lyricbar
 cd deadbeef-lyricbar
-make [gtk2 or gtk3]
+make clean gtk3 && make clean && make gtk2 
 sudo cp *.so /usr/lib/deadbeef # Depends on where DeaDBeeF is installed
 # OR, to install for the current user only
 mkdir -p ~/.local/lib/deadbeef && cp *.so ~/.local/lib/deadbeef
