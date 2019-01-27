@@ -16,7 +16,7 @@ While gtkmm is available in the repositories of most modern distributions (e.g. 
 
 ## Installation
 ### Arch Linux
-There's an [AUR package](https://aur.archlinux.org/packages/deadbeef-plugin-lyricbar-git) maintained by dpirate
+There's an [AUR package](https://aur.archlinux.org/packages/deadbeef-plugin-lyricbar-git) maintained by dpirate.
 
 ### Manual
 ```sh
