@@ -31,6 +31,8 @@ mkdir -p ~/.local/lib/deadbeef && cp *.so ~/.local/lib/deadbeef
 ```
 
 ## Usage
-Activate Design Mode (View → Design mode) and add Lyricbar somewhere. Personally I like to put the lyrics in a Splitter (left right) with Album cover on one side.
+Activate Design Mode (View → Design mode) and add Lyricbar somewhere.
+
+Personally I like to put the lyrics in a Splitter (left right) with Album cover on one side, as you can see on the screenshots.
 
 Disable Design Mode back and enjoy the music :)
