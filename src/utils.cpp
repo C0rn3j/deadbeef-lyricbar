@@ -22,12 +22,11 @@ using namespace Glib;
 
 const DB_playItem_t *last;
 
-// Can't use HTTPS cause libxml++ is broken
+// Can't use HTTPS cause libxml2 does not support it. TODO - add some CURL workaround, maybe download into a file in /tmp and load from that?
 static const ustring OpenLyricsDatabase_FMT = "http://lyrics.rys.pw/?artist=%1&title=%2";
 static const ustring LyricsWiki_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
 static const char *home_cache = getenv("XDG_CACHE_HOME");
-static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache")
-                               + "/deadbeef/lyrics/";
+static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache") + "/deadbeef/lyrics/";
 
 static experimental::optional<ustring>(*const observers[])(DB_playItem_t *) = {&observe_lyrics_from_lyricwiki};
 
@@ -148,6 +147,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	string url;
 	ustring lyrics;
 	string fallBackText="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
+	string fallBackTextNetworkError="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com) - the Open Lyrics Database server seems down:\nhttps://github.com/Lyrics/lyrics\n";
 	bool lyricsfound = 0;
 	try {
 		xmlpp::TextReader reader{openlyrics_api_url};
@@ -168,6 +168,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 		}
 	} catch (const exception &e) {
 		cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << openlyrics_api_url << "'), what(): " << e.what() << endl;
+		fallBackText = fallBackTextNetworkError;
 	}
 	if (lyricsfound == 0) {
 		url = "";
