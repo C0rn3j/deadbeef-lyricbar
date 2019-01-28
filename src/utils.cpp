@@ -24,7 +24,7 @@ const DB_playItem_t *last;
 
 // Can't use HTTPS cause libxml2 does not support it. TODO - add some CURL workaround, maybe download into a file in /tmp and load from that?
 static const ustring OpenLyricsDatabase_FMT = "http://lyrics.rys.pw/?artist=%1&title=%2";
-static const ustring LyricsWiki_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
+static const ustring LyricWiki_FMT = "http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=%1&song=%2";
 static const char *home_cache = getenv("XDG_CACHE_HOME");
 static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache") + "/deadbeef/lyrics/";
 
@@ -141,13 +141,13 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	}
 
 	ustring openlyrics_api_url = ustring::compose(OpenLyricsDatabase_FMT, uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
-	ustring lyricswiki_api_url = ustring::compose(LyricsWiki_FMT,         uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
+	ustring lyricwiki_api_url = ustring::compose(LyricWiki_FMT,         uri_escape_string(artist, {}, false), uri_escape_string(title, {}, false));
 
 	cout << "api_url (1/1): " << openlyrics_api_url << endl;
 	string url;
 	ustring lyrics;
-	string fallBackText="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
-	string fallBackTextNetworkError="Lyrics found on a fallback database (LyricsWiki - lyrics.wikia.com) - the Open Lyrics Database server seems down:\nhttps://github.com/Lyrics/lyrics\n";
+	string fallBackText="Lyrics found on a fallback database (LyricWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
+	string fallBackTextNetworkError="Lyrics found on a fallback database (LyricWiki - lyrics.wikia.com) - the Open Lyrics Database server seems down:\nhttps://github.com/Lyrics/lyrics\n";
 	bool lyricsfound = 0;
 	try {
 		xmlpp::TextReader reader{openlyrics_api_url};
@@ -173,7 +173,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 	if (lyricsfound == 0) {
 		url = "";
 		try {
-				xmlpp::TextReader reader{lyricswiki_api_url};
+				xmlpp::TextReader reader{lyricwiki_api_url};
 
 				while (reader.read()) {
 					if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
@@ -190,7 +190,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 					}
 				}
 			} catch (const exception &e) {
-				cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << lyricswiki_api_url << "'), what(): " << e.what() << endl;
+				cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << lyricwiki_api_url << "'), what(): " << e.what() << endl;
 				return {};
 		}
 
@@ -198,7 +198,7 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 		// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
 		// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
 		// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
-		cout << "api_url (1/3): " << lyricswiki_api_url << endl;
+		cout << "api_url (1/3): " << lyricwiki_api_url << endl;
 		cout << "api_url (2/3): " << url << endl;
 
 		url.replace(0, 24, "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
