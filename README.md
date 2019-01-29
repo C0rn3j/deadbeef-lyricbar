@@ -24,7 +24,7 @@ There's an [AUR package](https://aur.archlinux.org/packages/deadbeef-plugin-lyri
 ```sh
 git clone https://github.com/C0rn3j/deadbeef-lyricbar
 cd deadbeef-lyricbar
-make clean gtk3 && make clean && make gtk2 
+make clean gtk3 # or make clean gtk2
 sudo cp *.so /usr/lib/deadbeef # Depends on where DeaDBeeF is installed
 # OR, to install for the current user only
 mkdir -p ~/.local/lib/deadbeef && cp *.so ~/.local/lib/deadbeef
