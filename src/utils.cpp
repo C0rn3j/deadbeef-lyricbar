@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 
@@ -28,7 +29,7 @@ static const ustring LyricWiki_FMT = "http://lyrics.wikia.com/api.php?action=lyr
 static const char *home_cache = getenv("XDG_CACHE_HOME");
 static const string lyrics_dir = (home_cache ? string(home_cache) : string(getenv("HOME")) + "/.cache") + "/deadbeef/lyrics/";
 
-static experimental::optional<ustring>(*const observers[])(DB_playItem_t *) = {&observe_lyrics_from_lyricwiki};
+static experimental::optional<ustring>(*const providers[])(DB_playItem_t *) = {&download_lyrics_from_lyricwiki};
 
 inline string cached_filename(string artist, string title) {
 	replace(artist.begin(), artist.end(), '/', '_');
@@ -131,7 +132,7 @@ experimental::optional<ustring> get_lyrics_from_tag(DB_playItem_t *track) {
 	else return get_lyrics_from_id3v2(track);
 }
 
-experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *track) {
+experimental::optional<ustring> download_lyrics_from_lyricwiki(DB_playItem_t *track) {
 	const char *artist;
 	const char *title;
 	{
@@ -157,12 +158,12 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "pre") {
 				reader.read();
 				lyrics = reader.get_value();
-				// got the cropped version of lyrics — display it before the complete one is got
 				if (reader.get_value() == "Not Found")
 					return {};
 				else {
 					set_lyrics(track, reader.get_value());
 					lyricsfound = 1;
+					return lyrics;
 				}
 			}
 		}
@@ -201,11 +202,11 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 		cout << "api_url (1/3): " << lyricwiki_api_url << endl;
 		cout << "api_url (2/3): " << url << endl;
 
-		url.replace(0, 24, "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
+		url.replace(0, strlen("http://lyrics.wikia.com/"), "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
 		// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
 		cout << "api_url (3/3): " << url << endl;
 
-		ustring raw_lyrics;
+		string raw_lyrics;
 		try {
 			xmlpp::TextReader reader{url};
 			while (reader.read()) {
@@ -219,29 +220,15 @@ experimental::optional<ustring> observe_lyrics_from_lyricwiki(DB_playItem_t *tra
 			cerr << "lyricbar: couldn't parse XML, what(): " << e.what() << endl;
 			return {};
 		}
-
-		raw_lyrics = "<root>" + raw_lyrics + "</root>"; // a somewhat dirty hack, but that's life
-
-		try {
-			xmlpp::TextReader reader{reinterpret_cast<const uint8_t*>(raw_lyrics.data()), raw_lyrics.bytes()};
-			while (reader.read()) {
-				if (reader.get_name() == "lyrics") {
-					reader.read();
-					lyrics = fallBackText;
-					lyrics += reader.get_value();
-					break;
-				}
-			}
-		} catch (const exception &e) {
-			cerr << "lyricbar: couldn't parse raw lyrics, what(): " << e.what() << endl;
+		// although counter-intuitive, this seems to be the right way to do the parsing
+		const static regex r{R"(<lyrics>\s*([^]*?)\s*</lyrics>)"};
+		smatch match;
+		regex_search(raw_lyrics, match, r);
+		if (match.size() < 2) {
 			return {};
 		}
+		return ustring{fallBackText.append(match[1])};
 	}
-	auto after_last_nonspace = find_if_not(lyrics.rbegin(), lyrics.rend(), ::isspace).base();
-	lyrics.erase(after_last_nonspace, lyrics.end());
-	auto first_nonspace = find_if_not(lyrics.begin(), lyrics.end(), ::isspace);
-	lyrics.erase(lyrics.begin(), first_nonspace);
-	return lyrics;
 }
 
 void update_lyrics(void *tr) {
@@ -271,7 +258,7 @@ void update_lyrics(void *tr) {
 		}
 
 		// No lyrics in the tag or cache; try to get some and cache if succeeded
-		for (auto f : observers) {
+		for (auto f : providers) {
 			if (auto lyrics = f(track)) {
 				set_lyrics(track, *lyrics);
 				save_cached_lyrics(artist, title, *lyrics);
