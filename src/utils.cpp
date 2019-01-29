@@ -149,7 +149,6 @@ experimental::optional<ustring> download_lyrics_from_lyricwiki(DB_playItem_t *tr
 	ustring lyrics;
 	string fallBackText="Lyrics found on a fallback database (LyricWiki - lyrics.wikia.com)\nPlease make sure the following lyrics are correct and add the text to the Open Lyrics Database:\nhttps://github.com/Lyrics/lyrics/wiki/Contributing\n\n";
 	string fallBackTextNetworkError="Lyrics found on a fallback database (LyricWiki - lyrics.wikia.com) - the Open Lyrics Database server seems down:\nhttps://github.com/Lyrics/lyrics\n";
-	bool lyricsfound = 0;
 	try {
 		xmlpp::TextReader reader{openlyrics_api_url};
 		while (reader.read()) {
@@ -158,11 +157,10 @@ experimental::optional<ustring> download_lyrics_from_lyricwiki(DB_playItem_t *tr
 			if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "pre") {
 				reader.read();
 				lyrics = reader.get_value();
-				if (reader.get_value() == "Not Found")
+				if (reader.get_value() == "Not Found") // Not really a working check atm
 					return {};
 				else {
 					set_lyrics(track, reader.get_value());
-					lyricsfound = 1;
 					return lyrics;
 				}
 			}
@@ -171,64 +169,59 @@ experimental::optional<ustring> download_lyrics_from_lyricwiki(DB_playItem_t *tr
 		cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << openlyrics_api_url << "'), what(): " << e.what() << endl;
 		fallBackText = fallBackTextNetworkError;
 	}
-	if (lyricsfound == 0) {
-		url = "";
-		try {
-				xmlpp::TextReader reader{lyricwiki_api_url};
-
-				while (reader.read()) {
-					if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
-						reader.read();
-						// got the cropped version of lyrics — display it before the complete one is got
-						if (reader.get_value() == "Not found")
-							return {};
-						else
-							set_lyrics(track, fallBackText+"\n"+reader.get_value());
-					} else if (reader.get_name() == "url") {
-						reader.read();
-						url = reader.get_value();
-						break;
-					}
-				}
-			} catch (const exception &e) {
-				cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << lyricwiki_api_url << "'), what(): " << e.what() << endl;
-				return {};
-		}
-
-		// Mark as not on OpenLyricsDB
-		// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
-		// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
-		// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
-		cout << "api_url (1/3): " << lyricwiki_api_url << endl;
-		cout << "api_url (2/3): " << url << endl;
-
-		url.replace(0, strlen("http://lyrics.wikia.com/"), "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
-		// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
-		cout << "api_url (3/3): " << url << endl;
-
-		string raw_lyrics;
-		try {
-			xmlpp::TextReader reader{url};
+	// We're still here, so Open Lyrics DB did not give a result/was down. Checking LyricWiki...
+	url = "";
+	try {
+			xmlpp::TextReader reader{lyricwiki_api_url};
 			while (reader.read()) {
-				if (reader.get_name() == "rev") {
+				if (reader.get_node_type() == xmlpp::TextReader::NodeType::Element && reader.get_name() == "lyrics") {
 					reader.read();
-					raw_lyrics = reader.get_value();
+					// got the cropped version of lyrics — display it before the complete one is got
+					if (reader.get_value() == "Not found")
+						return {};
+					else
+						set_lyrics(track, fallBackText+"\n"+reader.get_value());
+				} else if (reader.get_name() == "url") {
+					reader.read();
+					url = reader.get_value();
 					break;
 				}
 			}
 		} catch (const exception &e) {
-			cerr << "lyricbar: couldn't parse XML, what(): " << e.what() << endl;
+			cerr << "lyricbar: couldn't parse XML. Maybe the server is down? (URI is '" << lyricwiki_api_url << "'), what(): " << e.what() << endl;
 			return {};
-		}
-		// although counter-intuitive, this seems to be the right way to do the parsing
-		const static regex r{R"(<lyrics>\s*([^]*?)\s*</lyrics>)"};
-		smatch match;
-		regex_search(raw_lyrics, match, r);
-		if (match.size() < 2) {
-			return {};
-		}
-		return ustring{fallBackText.append(match[1])};
 	}
+	// Mark as not on OpenLyricsDB
+	// At this point cropped lyrics from LyricWiki should be shown, let's download the full version
+	// Starting URL before: http://lyrics.wikia.com/api.php?action=lyrics&fmt=xml&artist=boa&song=duvet
+	// URL before: http://lyrics.wikia.com/B%C3%B4a:Passport
+	cout << "api_url (1/3): " << lyricwiki_api_url << endl;
+	cout << "api_url (2/3): " << url << endl;
+	url.replace(0, strlen("http://lyrics.wikia.com/"), "http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=");
+	// URL after: http://lyrics.wikia.com/api.php?action=query&prop=revisions&rvprop=content&format=xml&titles=B%C3%B4a:Passport
+	cout << "api_url (3/3): " << url << endl;
+	string raw_lyrics;
+	try {
+		xmlpp::TextReader reader{url};
+		while (reader.read()) {
+			if (reader.get_name() == "rev") {
+				reader.read();
+				raw_lyrics = reader.get_value();
+				break;
+			}
+		}
+	} catch (const exception &e) {
+		cerr << "lyricbar: couldn't parse XML, what(): " << e.what() << endl;
+		return {};
+	}
+	// although counter-intuitive, this seems to be the right way to do the parsing
+	const static regex r{R"(<lyrics>\s*([^]*?)\s*</lyrics>)"};
+	smatch match;
+	regex_search(raw_lyrics, match, r);
+	if (match.size() < 2) {
+		return {};
+	}
+	return ustring{fallBackText.append(match[1])};
 }
 
 void update_lyrics(void *tr) {
